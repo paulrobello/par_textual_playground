@@ -1,0 +1,11 @@
+ParMarkdown, #log, #editor {
+    height: 1fr;
+    width: 1fr;
+    border: solid red;
+}
+
+#info {
+    height: 10;
+    width: 1fr;
+    border: solid red;
+}

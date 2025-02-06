@@ -1,0 +1,124 @@
+[project]
+name = "par_textual_playground"
+dynamic = [
+    "version",
+]
+description = "Par Textual Playground"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Paul Robello", email = "probello@gmail.com" },
+]
+maintainers = [
+    { name = "Paul Robello", email = "probello@gmail.com" },
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Environment :: Console",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Other Audience",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+keywords = [
+    "tui",
+    "textual",
+    "markdown",
+]
+dependencies = [
+    "asyncio>=3.4.3",
+    "pydantic-core>=2.27.2",
+    "pydantic>=2.10.6",
+    "python-dotenv>=1.0.1",
+    "rich>=13.9.4",
+    "orjson>=3.10.15",
+    "typer>=0.15.1",
+    "par-ai-core>=0.1.13",
+    "clipman>=3.3.1",
+    "textual>=1.0.0",
+]
+
+packages = [
+    "src/par_textual_playground",
+]
+
+[project.license]
+file = "LICENSE"
+
+[project.urls]
+Homepage = "https://github.com/paulrobello/par_textual_playground"
+Documentation = "https://github.com/paulrobello/par_textual_playground/blob/main/README.md"
+Repository = "https://github.com/paulrobello/par_textual_playground"
+Issues = "https://github.com/paulrobello/par_textual_playground/issues"
+Discussions = "https://github.com/paulrobello/par_textual_playground/discussions"
+Wiki = "https://github.com/paulrobello/par_textual_playground/wiki"
+
+[project.scripts]
+ptp = "par_textual_playground.__main__:run"
+
+[build-system]
+requires = [
+    "hatchling",
+    "wheel",
+]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "build>=1.2.1",
+    "twine>=6.1.0",
+    "pyright>=1.1.379",
+    "pre-commit>=4.1.0",
+    "ruff>=0.9.3",
+    "pyinstrument>=5.0.1",
+    "ruff>=0.7.0",
+    "types-orjson>=3.6.2",
+]
+
+[tool.hatch.version]
+path = "src/par_textual_playground/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/par_textual_playground",
+]
+include = [
+    "py.typed",
+    "**/*.py",
+    "**/*.html",
+    "**/*.gif",
+    "**/*.jpg",
+    "**/*.png",
+    "**/*.md",
+    "**/*.tcss",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/par_textual_playground",
+    "LICENSE",
+    "README.md",
+    "extraction_prompt.md",
+    "pyproject.toml",
+]
+exclude = [
+    "*.pyc",
+    "__pycache__",
+    "*.so",
+    "*.dylib",
+]
+
+[tool.uv.sources.par-ai-core]
+path = "../par_ai_core"
+editable = true
