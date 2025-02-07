@@ -125,6 +125,7 @@ class ParTextArea(TextArea):
         self.debug = debug
         self.suggestion_mode = suggestion_mode
         self.float_box = Static("", id="float_box")
+        self.float_box.display = False
 
     def compose(self) -> ComposeResult:
         yield self.float_box
@@ -166,14 +167,19 @@ class ParTextArea(TextArea):
 
     def _watch__suggestion(self) -> None:
         """Watch for changes to the suggestion and update the text area."""
-        self.float_box.update(self._suggestion)
-        self.float_box.display = len(self._suggestion) > 0
-        self.call_after_refresh(self.update_float_pos)
+
+        if self.suggestion_mode == "float":
+            self.float_box.update(self._suggestion)
+            self.float_box.display = len(self._suggestion) > 0
+            self.call_after_refresh(self.update_float_pos)
 
     def update_float_pos(self) -> None:
+        """Update the float box position based on the cursor position."""
         if self.float_box.display:
             ta_size = self.size
+            ta_offset = self.screen._compositor.get_offset(self)
             box_size = self.float_box.size
+
             x_offset_max = ta_size.width - 2 - box_size.width
             y_offset_max = ta_size.height - 2 - box_size.height
             co = self.cursor_screen_offset
@@ -182,13 +188,17 @@ class ParTextArea(TextArea):
                     f"""
                     cursor so: {co}
                     offset max: {[x_offset_max, y_offset_max]}
+                    edit offset: {ta_offset}
                     edit size: {[ta_size.width - 2, ta_size.height - 2]}
                     box_size {[box_size.width, box_size.height]}
                     """
                 ).strip()
             )
 
-            self.float_box.styles.offset = (min(x_offset_max, co.x - 1), min(y_offset_max, co.y - 1))
+            self.float_box.styles.offset = (
+                min(x_offset_max, co.x - ta_offset.x),
+                min(y_offset_max, co.y - ta_offset.y),
+            )
 
     def action_accept_suggestion(self) -> None:
         """Accept the suggestion and insert it into the text area."""
