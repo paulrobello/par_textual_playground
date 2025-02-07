@@ -152,7 +152,7 @@ class ParMarkdownFence(MarkdownBlock):
 
 class ParMarkdown(Markdown):
     DEFAULT_CSS = """
-    Markdown {
+    ParMarkdown {
         height: auto;
         padding: 0 2 1 2;
         layout: vertical;

@@ -92,6 +92,19 @@ class ParTextArea(TextArea):
         Binding("ctrl+t", "accept_suggestion", "Suggestion", show=True),
     ]
 
+    DEFAULT_CSS = """
+    #float_box {
+        layer: above;
+        border: solid $accent;
+        height: auto;
+        min-height: 4;
+        width: auto;
+        max-width: 80%;
+        position: absolute;
+        offset: 0 0;
+    }
+    """
+
     suggester: Suggester | None = None
     _suggestion: Reactive[str] = reactive("")
     _line_string: Reactive[str] = reactive("", init=False)
