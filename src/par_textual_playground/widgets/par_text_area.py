@@ -97,6 +97,7 @@ class ParTextArea(TextArea):
     def _on_text_area_selection_changed(self, event: TextArea.SelectionChanged) -> None:
         """Handle text area selection."""
         self.app.set_info(f"Cursor: {self.cursor_location}")
+        self._suggestion = ""
 
     async def _on_suggestion_ready(self, event: SuggestionReady) -> None:
         """Handle suggestion messages and set the suggestion for preview."""
