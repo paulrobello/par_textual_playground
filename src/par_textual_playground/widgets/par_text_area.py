@@ -66,7 +66,7 @@ class ParSuggest(Suggester):
 {last_line}
 </current_line>
 <instructions>
-The context and current_line has been written by the user.
+The context and current_line has been written by the user. The current_line immediately follows the context.
 You will continue writing the next few words of the text as if you were the original writer.
 Do not begin the text with `...` and don't summarize the text.
 Do not explain the text or the completion.
@@ -106,7 +106,7 @@ class ParTextArea(TextArea):
     """
 
     suggester: Suggester | None = None
-    _suggestion: Reactive[str] = reactive("")
+    _suggestion: Reactive[str] = reactive("", init=False)
     _line_string: Reactive[str] = reactive("", init=False)
     suggestion_mode: Reactive[Literal["inline", "float"]] = reactive("inline", init=False)
 
@@ -114,7 +114,7 @@ class ParTextArea(TextArea):
         self,
         *args,
         suggester: Suggester | None = None,
-        suggestion_mode: Literal["inline", "float"] = "inline",
+        suggestion_mode: Literal["inline", "float"] = "float",
         debug: bool = False,
         **kwargs,
     ) -> None:
@@ -140,7 +140,7 @@ class ParTextArea(TextArea):
         self._line_string = "\n".join(context)
         self._suggestion = ""
         if self._line_string:
-            self.run_worker(self.suggester._get_suggestion(self, self._line_string))
+            self.run_worker(self.suggester._get_suggestion(self, self._line_string), group="suggestion", exclusive=True)
 
     # def _on_text_area_changed(self) -> None:
     #     self._check_suggestion()
@@ -179,14 +179,34 @@ class ParTextArea(TextArea):
             ta_size = self.size
             ta_offset = self.screen._compositor.get_offset(self)
             box_size = self.float_box.size
+            border_x_size = 0
+            border_y_size = 0
 
-            x_offset_max = ta_size.width - 2 - box_size.width
-            y_offset_max = ta_size.height - 2 - box_size.height
-            co = self.cursor_screen_offset
+            if self.styles.border.left[0] not in ["", "none"]:
+                border_x_size += 1
+            if self.styles.border.right[0] not in ["", "none"]:
+                border_x_size += 1
+            if self.vertical_scrollbar.display:
+                border_x_size += 2
+
+            if self.styles.border.top[0] not in ["", "none"]:
+                border_y_size += 1
+            if self.styles.border.bottom[0] not in ["", "none"]:
+                border_y_size += 1
+            if self.horizontal_scrollbar.display:
+                border_y_size += 2
+
+            x_offset_max = ta_size.width - border_x_size - box_size.width
+            y_offset_max = ta_size.height - border_y_size - box_size.height
+            cso = self.cursor_screen_offset
             self.app.set_info(  # type: ignore
                 dedent(
                     f"""
-                    cursor so: {co}
+                    x_scroll_viz: {self.horizontal_scrollbar.display}
+                    y_scroll_viz: {self.vertical_scrollbar.display}
+                    x_pad: {self.styles.padding.left + self.styles.padding.right}
+                    y_pad: {self.styles.padding.top + self.styles.padding.bottom}
+                    cursor scn off: {cso}
                     offset max: {[x_offset_max, y_offset_max]}
                     edit offset: {ta_offset}
                     edit size: {[ta_size.width - 2, ta_size.height - 2]}
@@ -196,8 +216,8 @@ class ParTextArea(TextArea):
             )
 
             self.float_box.styles.offset = (
-                min(x_offset_max, co.x - ta_offset.x),
-                min(y_offset_max, co.y - ta_offset.y),
+                min(x_offset_max, cso.x - ta_offset.x - self.styles.padding.left),
+                min(y_offset_max, cso.y - ta_offset.y - self.styles.padding.top),
             )
 
     def action_accept_suggestion(self) -> None:

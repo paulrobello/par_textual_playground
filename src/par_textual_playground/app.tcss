@@ -16,7 +16,7 @@ ParMarkdown {
     border: solid $accent;
 }
 #info {
-    height: 10;
+    height: 15;
     width: 1fr;
     border: solid $accent;
 }
