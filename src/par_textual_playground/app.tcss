@@ -1,11 +1,33 @@
-ParMarkdown, #log, #editor {
+Screen {
+    layers: below above;
+    * {
+        layer: below;
+    }
+}
+ParMarkdown {
     height: 1fr;
     width: 1fr;
-    border: solid red;
+    border: solid $accent;
 }
 
+#log, #editor {
+    height: 1fr;
+    width: 1fr;
+    border: solid $accent;
+}
 #info {
     height: 10;
     width: 1fr;
-    border: solid red;
+    border: solid $accent;
+}
+
+#float_box {
+    layer: above;
+    border: solid $accent;
+    height: auto;
+    min-height: 4;
+    width: auto;
+    max-width: 80%;
+    position: absolute;
+    offset: 0 0;
 }

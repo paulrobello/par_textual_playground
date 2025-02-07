@@ -14,10 +14,14 @@ class ParApp(App[None]):
     def __init__(self) -> None:
         super().__init__()
         # self.mdv = ParMarkdown((Path(__file__).parent / "fence.md").read_text(), id="mdv")
-        my_suggester = ParSuggest(app=self)
+        my_suggester = ParSuggest(app=self, max_words=20, debug=True)
 
         self.editor = ParTextArea(
-            id="editor", text=(Path(__file__).parent / "story.md").read_text(), suggester=my_suggester
+            id="editor",
+            text=(Path(__file__).parent / "story.md").read_text(),
+            suggester=my_suggester,
+            debug=True,
+            suggestion_mode="float",
         )
         self.logview = RichLog(id="log")
         self.info = TextArea(id="info")
@@ -27,7 +31,7 @@ class ParApp(App[None]):
         self.title = "Par Widget Test"
         yield Header()
         yield Footer()
-        with Horizontal():
+        with Horizontal(id="main"):
             # yield self.mdv
             yield self.editor
             with Vertical():
@@ -39,4 +43,5 @@ class ParApp(App[None]):
         self.logview.write(msg)
 
     def set_info(self, msg: str) -> None:
+        """Set the text of the info TextArea."""
         self.info.text = msg
