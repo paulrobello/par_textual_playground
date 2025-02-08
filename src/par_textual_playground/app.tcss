@@ -24,3 +24,19 @@ ParMarkdown {
     width: 1fr;
     height: 1fr;
 }
+
+CanvasTest {
+    width: 1fr;
+    height: 1fr;
+    margin: 0;
+    padding: 0;
+}
+
+ParCanvas {
+    width: 1fr;
+    height: 1fr;
+    margin: 0;
+    padding: 0;
+    background: black;
+
+}

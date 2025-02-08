@@ -2313,6 +2313,7 @@ source = { editable = "." }
 dependencies = [
     { name = "asyncio" },
     { name = "clipman" },
+    { name = "numpy" },
     { name = "orjson" },
     { name = "par-ai-core" },
     { name = "pydantic" },
@@ -2338,6 +2339,7 @@ dev = [
 requires-dist = [
     { name = "asyncio", specifier = ">=3.4.3" },
     { name = "clipman", specifier = ">=3.3.1" },
+    { name = "numpy", specifier = ">=1.26.4" },
     { name = "orjson", specifier = ">=3.10.15" },
     { name = "par-ai-core", specifier = ">=0.1.13" },
     { name = "pydantic", specifier = ">=2.10.6" },
