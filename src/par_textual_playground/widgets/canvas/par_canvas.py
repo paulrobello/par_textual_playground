@@ -123,6 +123,14 @@ class ParCanvas(Widget):
         return super().refresh(*self._dirty.values(), *regions, repaint=repaint, layout=layout, recompose=recompose)
 
     def render_line(self, y: int) -> Strip:
+        """
+        Renders a single line of the canvas at the given y-coordinate.
+
+        Args:
+            y: The y-coordinate of the line.
+        Returns:
+            A Strip representing the line.
+        """
         if self._canvas_size is None:
             return Strip([Segment("")])
         if y < self._canvas_size.height:
@@ -193,6 +201,14 @@ class ParCanvas(Widget):
         hires_mode: HiResMode = HiResMode.HALFBLOCK,
         style: str = "white",
     ) -> None:
+        """
+        Sets multiple pixels at the given coordinates using the specified Hi-Res mode.
+
+        Args:
+            coordinates: An iterable of tuples representing the coordinates of the pixels.
+            hires_mode: The Hi-Res mode to use.
+            style: The style to apply to the character.
+        """
         assert self._canvas_size and self._canvas_region
         pixel_size = hires_sizes[hires_mode]
         hires_size_x = self._canvas_size.width * pixel_size.width
@@ -431,6 +447,40 @@ class ParCanvas(Widget):
                     pixels.append((cx + x / scale_x, cy + y / scale_y))
 
         self.set_hires_pixels(pixels, hires_mode, style)
+
+    def draw_circle(
+        self, cx: int, cy: int, radius: int, style: str = "white"
+    ) -> None:
+        """
+        Draw a circle using Bresenham's algorithm. Compensates for 2:1 aspect ratio.
+
+        Args:
+            cx (int): X-coordinate of the center of the circle.
+            cy (int): Y-coordinate of the center of the circle.
+            radius (int): Radius of the circle.
+            style (str): Style of the pixels to be drawn.
+        """
+        x: float = radius
+        y: float = 0
+        decision: float = 1 - radius
+
+        while y <= x:
+            self.set_pixel(cx + x, cy + y // 2, "█", style)
+            self.set_pixel(cx - x, cy + y // 2, "█", style)
+            self.set_pixel(cx + x, cy - y // 2, "█", style)
+            self.set_pixel(cx - x, cy - y // 2, "█", style)
+            self.set_pixel(cx + y, cy + x // 2, "█", style)
+            self.set_pixel(cx - y, cy + x // 2, "█", style)
+            self.set_pixel(cx + y, cy - x // 2, "█", style)
+            self.set_pixel(cx - y, cy - x // 2, "█", style)
+
+            y += 1
+            if decision <= 0:
+                decision += 2 * y + 1
+            else:
+                x -= 1
+                decision += 2 * (y - x) + 1
+
 
     def draw_circle_highres(
         self, cx: float, cy: float, radius: float, hires_mode: HiResMode = HiResMode.HALFBLOCK, style: str = "white"
