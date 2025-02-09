@@ -56,7 +56,6 @@ class ParApp(App[None]):
                 yield self.logview
         # self.editor_float.focus()
 
-
     def logit(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
         """Log a message to the RichLog widget."""
         self.logview.write(msg)

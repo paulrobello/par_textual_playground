@@ -37,6 +37,8 @@ class ParCanvas(Widget):
     _canvas_region: Region | None = None
     _buffer: list[list[str]]
     _styles: list[list[str]]
+    _dirty: dict[int, Region] = {}
+    _batching: bool = False
 
     def __init__(
         self,
@@ -53,10 +55,37 @@ class ParCanvas(Widget):
         if width is not None and height is not None:
             self.reset(size=Size(width, height), refresh=False)
 
+    @property
+    def batching(self) -> bool:
+        """
+        Whether the canvas is currently in batch mode.
+        When batching is enabled, drawing operations are accumulated and only executed when the batching flag is turned off.
+        """
+        return self._batching
+
+    @batching.setter
+    def batching(self, value: bool) -> None:
+        if self._batching == value:
+            return
+        self._batching = value
+        if not value:
+            self.refresh()
+            self._dirty.clear()
+
     def _on_resize(self, event: Resize) -> None:
         self.post_message(self.Resize(canvas=self, size=event.size))
 
     def reset(self, size: Size | None = None, refresh: bool = True) -> None:
+        """
+        Resets the canvas to the specified size or to the current size if no size is provided.
+        Clears buffers,styles and dirty cache, and resets the canvas size.
+
+        Args:
+            size: The new size for the canvas.
+            refresh: Whether to refresh the canvas after resetting.
+        Returns:
+            self for chaining.
+        """
         if size:
             self._canvas_size = size
             self._canvas_region = Region(0, 0, size.width, size.height)
@@ -65,8 +94,33 @@ class ParCanvas(Widget):
             self._buffer = [[" " for _ in range(self._canvas_size.width)] for _ in range(self._canvas_size.height)]
             self._styles = [["" for _ in range(self._canvas_size.width)] for _ in range(self._canvas_size.height)]
 
+        self._dirty.clear()
+        self._batching = False
         if refresh:
             self.refresh()
+
+    def refresh(
+        self,
+        *regions: Region,
+        repaint: bool = True,
+        layout: bool = False,
+        recompose: bool = False,
+    ) -> Self:
+        """
+        Refreshes the specified regions of the canvas.
+        If batching is enabled does not immediately send the regions to textual for refresh.
+
+        Args:
+            regions: The regions to refresh.
+            repaint: Whether to repaint the entire canvas.
+            layout: Whether to layout the entire canvas.
+            recompose: Whether to recompose the entire canvas.
+        Returns:
+            self for chaining.
+        """
+        if self.batching:
+            return self
+        return super().refresh(*self._dirty.values(), *regions, repaint=repaint, layout=layout, recompose=recompose)
 
     def render_line(self, y: int) -> Strip:
         if self._canvas_size is None:
@@ -77,7 +131,34 @@ class ParCanvas(Widget):
             )
         return Strip([])
 
+    def mark_dirty(self, region: Region) -> None:
+        """
+        Marks a region as dirty for refreshing.
+        If batching is enabled, the region is added to the dirty region set.
+        If batching is disabled, the region is immediately sent to textual for refresh.
+
+        Args:
+            region: The region to mark as dirty.
+        """
+        if self._batching:
+            if region.y not in self._dirty:
+                self._dirty[region.y] = region
+            else:
+                self._dirty[region.y] = self._dirty[region.y].union(region)
+            return
+        self.refresh(region)
+
     def set_pixel(self, x: int, y: int, char: str = "█", style: str = "white") -> None:
+        """
+        Sets a single pixel at the given coordinates.
+        Also marks it dirty for refreshing.
+
+        Args:
+            x: The x-coordinate of the pixel.
+            y: The y-coordinate of the pixel.
+            char: The character to draw.
+            style: The style to apply to the character.
+        """
         assert self._canvas_region is not None
         if not self._canvas_region.contains(x, y):
             # coordinates are outside canvas
@@ -85,7 +166,8 @@ class ParCanvas(Widget):
 
         self._buffer[y][x] = char
         self._styles[y][x] = style
-        self.refresh(Region(x, y, 1, 1))
+        r = Region(x, y, 1, 1)
+        self.mark_dirty(r)
 
     def set_pixels(
         self,
@@ -93,6 +175,15 @@ class ParCanvas(Widget):
         char: str = "█",
         style: str = "white",
     ) -> None:
+        """
+        Sets multiple pixels at the given coordinates.
+        Also marks them dirty for refreshing.
+
+        Args:
+            coordinates: An iterable of tuples representing the coordinates of the pixels.
+            char: The character to draw.
+            style: The style to apply to the character.
+        """
         for x, y in coordinates:
             self.set_pixel(x, y, char, style)
 
@@ -102,15 +193,18 @@ class ParCanvas(Widget):
         hires_mode: HiResMode = HiResMode.HALFBLOCK,
         style: str = "white",
     ) -> None:
-        pixel_size = hires_sizes.get(hires_mode)
+        assert self._canvas_size and self._canvas_region
+        pixel_size = hires_sizes[hires_mode]
         hires_size_x = self._canvas_size.width * pixel_size.width
         hires_size_y = self._canvas_size.height * pixel_size.height
         hires_buffer = np.zeros(
             shape=(hires_size_y, hires_size_x),
             dtype=bool,
         )
+        pixel_info = pixels.get(hires_mode)
+        assert pixel_info is not None
         for x, y in coordinates:
-            if not self._canvas_region.contains(x, y):
+            if not self._canvas_region.contains(floor(x), floor(y)):
                 # coordinates are outside canvas
                 continue
             hires_buffer[floor(y * pixel_size.height)][floor(x * pixel_size.width)] = True
@@ -118,7 +212,7 @@ class ParCanvas(Widget):
             for y in range(0, hires_size_y, pixel_size.height):
                 subarray = hires_buffer[y : y + pixel_size.height, x : x + pixel_size.width]
                 subpixels = tuple(int(v) for v in subarray.flat)
-                if char := pixels.get(hires_mode).get(subpixels):
+                if char := pixel_info[subpixels]:
                     self.set_pixel(
                         x // pixel_size.width,
                         y // pixel_size.height,
@@ -127,9 +221,31 @@ class ParCanvas(Widget):
                     )
 
     def get_pixel(self, x: int, y: int) -> tuple[str, str]:
+        """
+        Retrieves the character and style of a single pixel at the given coordinates.
+
+        Args:
+            x: The x-coordinate of the pixel.
+            y: The y-coordinate of the pixel.
+        Returns:
+            A tuple containing the character and style of the pixel.
+        """
         return self._buffer[y][x], self._styles[y][x]
 
     def draw_line(self, x0: int, y0: int, x1: int, y1: int, char: str = "█", style: str = "white") -> None:
+        """
+        Draws a line from (x0, y0) to (x1, y1) using the specified character and style.
+        Also marks the line's pixels dirty for refreshing.
+
+        Args:
+            x0: The x-coordinate of the start of the line.
+            y0: The y-coordinate of the start of the line.
+            x1: The x-coordinate of the end of the line.
+            y1: The y-coordinate of the end of the line.
+            char: The character to draw.
+            style: The style to apply to the character.
+        """
+        assert self._canvas_region
         if not self._canvas_region.contains(x0, y0) and not self._canvas_region.contains(x1, y1):
             return
         self.set_pixels(self._get_line_coordinates(x0, y0, x1, y1), char, style)
@@ -140,6 +256,15 @@ class ParCanvas(Widget):
         char: str = "█",
         style: str = "white",
     ) -> None:
+        """
+        Draws multiple lines from given coordinates using the specified character and style.
+        Also marks the lines' pixels dirty for refreshing.
+
+        Args:
+            coordinates: An iterable of tuples representing the coordinates of the lines.
+            char: The character to draw.
+            style: The style to apply to the character.
+        """
         for x0, y0, x1, y1 in coordinates:
             self.draw_line(x0, y0, x1, y1, char, style)
 
@@ -152,6 +277,18 @@ class ParCanvas(Widget):
         hires_mode: HiResMode = HiResMode.HALFBLOCK,
         style: str = "white",
     ) -> None:
+        """
+        Draws a high-resolution line from (x0, y0) to (x1, y1) using the specified character and style.
+        Also marks the line's pixels dirty for refreshing.
+
+        Args:
+            x0: The x-coordinate of the start of the line.
+            y0: The y-coordinate of the start of the line.
+            x1: The x-coordinate of the end of the line.
+            y1: The y-coordinate of the end of the line.
+            hires_mode: The high-resolution mode to use.
+            style: The style to apply to the character.
+        """
         self.draw_hires_lines([(x0, y0, x1, y1)], hires_mode, style)
 
     def draw_hires_lines(
@@ -160,13 +297,25 @@ class ParCanvas(Widget):
         hires_mode: HiResMode = HiResMode.HALFBLOCK,
         style: str = "white",
     ) -> None:
-        pixel_size = hires_sizes.get(hires_mode)
+        """
+        Draws multiple high-resolution lines from given coordinates using the specified character and style.
+        Also marks the lines' pixels dirty for refreshing.
+
+        Args:
+            coordinates: An iterable of tuples representing the coordinates of the lines.
+            hires_mode: The high-resolution mode to use.
+            style: The style to apply to the character.
+        """
+        assert self._canvas_region
+        pixel_size = hires_sizes[hires_mode]
         pixels = []
         for x0, y0, x1, y1 in coordinates:
-            if not self._canvas_region.contains(x0, y0) and not self._canvas_region.contains(x1, y1):
+            if not self._canvas_region.contains(floor(x0), floor(y0)) and not self._canvas_region.contains(
+                floor(x1), floor(y1)
+            ):
                 # coordinates are outside canvas
                 continue
-            coordinates = self._get_line_coordinates(
+            coords = self._get_line_coordinates(
                 floor(x0 * pixel_size.width),
                 floor(y0 * pixel_size.height),
                 floor(x1 * pixel_size.width),
@@ -178,7 +327,7 @@ class ParCanvas(Widget):
                         x / pixel_size.width,
                         y / pixel_size.height,
                     )
-                    for x, y in coordinates
+                    for x, y in coords
                 ]
             )
         self.set_hires_pixels(pixels, hires_mode, style)
@@ -192,6 +341,17 @@ class ParCanvas(Widget):
         thickness: int = 1,
         style: str = "white",
     ) -> None:
+        """
+        Draw a rectangle box with the specified thickness and style.
+
+        Args:
+            x0: The x-coordinate of the top-left corner.
+            y0: The y-coordinate of the top-left corner.
+            x1: The x-coordinate of the bottom-right corner.
+            y1: The y-coordinate of the bottom-right corner.
+            thickness: The thickness of the box.
+            style: The style to apply to the characters.
+        """
         T = thickness
         x0, x1 = sorted((x0, x1))
         y0, y1 = sorted((y0, y1))
@@ -206,8 +366,8 @@ class ParCanvas(Widget):
 
     def draw_filled_circle(self, cx: int, cy: int, radius: int, style: str = "white") -> None:
         """
-        Draw a filled circle using Bresenham's algorithm.
-        Compensates for 2:1 aspect ratio.
+        Draw a filled circle using Bresenham's algorithm. Compensates for 2:1 aspect ratio.
+        Also marks the circle's pixels dirty for refreshing.
 
         Args:
             cx (int): X-coordinate of the center of the circle.
@@ -215,6 +375,7 @@ class ParCanvas(Widget):
             radius (int): Radius of the circle.
             style (str): Style of the pixels to be drawn.
         """
+
         def draw_horizontal_line(y, x1, x2):
             for x in range(x1, x2 + 1):
                 self.set_pixel(x, y, char="█", style=style)
@@ -245,8 +406,19 @@ class ParCanvas(Widget):
     def draw_filled_circle_highres(
         self, cx: float, cy: float, radius: float, hires_mode: HiResMode = HiResMode.HALFBLOCK, style: str = "white"
     ) -> None:
+        """
+        Draw a filled circle, with high-resolution support.
+        Also marks the circle's pixels dirty for refreshing.
+
+        Args:
+            cx (float): X-coordinate of the center of the circle.
+            cy (float): Y-coordinate of the center of the circle.
+            radius (float): Radius of the circle.
+            hires_mode (HiResMode): The high-resolution mode to use.
+            style (str): Style of the pixels to be drawn.
+        """
         pixels = []
-        pixel_size = hires_sizes.get(hires_mode)
+        pixel_size = hires_sizes[hires_mode]
         scale_x = pixel_size.width
         scale_y = pixel_size.height
 
@@ -263,8 +435,19 @@ class ParCanvas(Widget):
     def draw_circle_highres(
         self, cx: float, cy: float, radius: float, hires_mode: HiResMode = HiResMode.HALFBLOCK, style: str = "white"
     ) -> None:
+        """
+        Draw a circle with high-resolution support using Bresenham's algorithm. Compensates for 2:1 aspect ratio.
+        Also marks the circle's pixels dirty for refreshing.
+
+        Args:
+            cx (float): X-coordinate of the center of the circle.
+            cy (float): Y-coordinate of the center of the circle.
+            radius (float): Radius of the circle.
+            hires_mode (HiResMode): The high-resolution mode to use.
+            style (str): Style of the pixels to be drawn.
+        """
         pixels = []
-        pixel_size = hires_sizes.get(hires_mode)
+        pixel_size = hires_sizes[hires_mode]
         scale_x = pixel_size.width
         scale_y = pixel_size.height
 
@@ -305,6 +488,16 @@ class ParCanvas(Widget):
         text: str,
         align: TextAlign = TextAlign.LEFT,
     ) -> None:
+        """
+        Write text to the canvas at the specified position, with support for markup.
+        Also marks the texts pixels dirty for refreshing.
+
+        Args:
+            x (int): X-coordinate of the left edge of the text.
+            y (int): Y-coordinate of the baseline of the text.
+            text (str): Text to be written.
+            align (TextAlign): The alignment of the text within the canvas.
+        """
         assert self._canvas_size is not None
         if y < 0 or y >= self._canvas_size.height:
             return
@@ -354,7 +547,7 @@ class ParCanvas(Widget):
         self._styles[y][buffer_left:buffer_right] = [str(s) for s in rich_styles[text_left:text_right]]
         assert len(self._buffer[y]) == self._canvas_size.width
         assert len(self._styles[y]) == self._canvas_size.width
-        self.refresh(Region(buffer_left, y, buffer_right - buffer_left, 1))
+        self.mark_dirty(Region(buffer_left, y, (buffer_right or 0) - buffer_left, 1))
 
     def _get_line_coordinates(self, x0: int, y0: int, x1: int, y1: int) -> Iterator[tuple[int, int]]:
         """Get all pixel coordinates on the line between two points.

@@ -1,4 +1,3 @@
-import rich.color
 from textual import on
 from textual.app import ComposeResult
 from textual.widget import Widget
@@ -43,11 +42,11 @@ class Ball:
     def bounce_walls(self):
         x = self.pos[0]
         y = self.pos[1]
-        r = self.radius
+        r = self.radius + 1
 
-        if x-1 <= r or x+1 >= self.canvas.size.width - r:
+        if x - 1 <= r or x + 1 >= self.canvas.size.width - r:
             self.velocity = (-self.velocity[0], self.velocity[1])
-        if y-1 <= r*0.5 or y+1 >= self.canvas.size.height - r*0.5:
+        if y - 1 <= r * 0.5 or y + 1 >= self.canvas.size.height - r * 0.5:
             self.velocity = (self.velocity[0], -self.velocity[1])
 
     def update(self) -> None:
@@ -63,7 +62,7 @@ class CanvasTest(Widget):
         super().__init__(*args, **kwargs)
         self.canvas = ParCanvas(id="canvas")
         self.canvas.border_title = "Canvas widget border"
-        self.ball = Ball(self.canvas,(16, 16), (0.2, 0.2), 10, "red", filled=False)
+        self.ball = Ball(self.canvas, (16, 16), (0.2, 0.2), 10, "red", filled=False)
 
     def compose(self) -> ComposeResult:
         yield self.canvas
@@ -74,16 +73,18 @@ class CanvasTest(Widget):
 
     def update(self) -> None:
         # self.canvas.reset(self.size)
-        self.canvas.draw_rectangle_box(0, 0, self.canvas.size.width - 1, self.canvas.size.height - 1, thickness=2)
+        self.canvas.batching = True
         self.ball.draw(erase=True)
         self.ball.update()
         self.ball.draw()
+        self.canvas.batching = False
 
     @on(ParCanvas.Resize)
     def update_size(self) -> None:
         canvas = self.canvas
-        self.app.set_info(f"Canvas size: {self.size}")
+        self.app.set_info(f"Canvas size: {self.size}")  # type: ignore
         canvas.reset(self.size)
+        self.canvas.batching = True
         canvas.draw_rectangle_box(0, 0, canvas.size.width - 1, canvas.size.height - 1, thickness=2)
         canvas.draw_filled_circle_highres(
             int(canvas.size.width * 0.75), int(canvas.size.height * 0.75), 15, style="white"
@@ -106,3 +107,4 @@ class CanvasTest(Widget):
             1,
             "[green]Bresenham's algorithm",
         )
+        self.canvas.batching = False

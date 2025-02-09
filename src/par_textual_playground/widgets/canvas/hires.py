@@ -1,6 +1,6 @@
 """This code initially created by David Fokkema https://github.com/davidfokkema/textual-plot"""
+
 import enum
-import itertools
 
 from textual.geometry import Size
 
@@ -297,11 +297,11 @@ pixels = {
     },
 }
 
-if __name__ == "__main__":
-
-    def get_pixel_ordering(d8: int, d7: int, d6: int, d5: int, d4: int, d3: int, d2: int, d1: int) -> tuple[int]:
-        return d1, d4, d2, d5, d3, d6, d7, d8
-
-    for i, perm in zip(range(0x2800, 0x2900), itertools.product([0, 1], repeat=8)):
-        pixels = get_pixel_ordering(*perm)
-        print(f'{pixels}: "{chr(i)}",')
+# if __name__ == "__main__":
+#
+#     def get_pixel_ordering(d8: int, d7: int, d6: int, d5: int, d4: int, d3: int, d2: int, d1: int) -> tuple[int]:
+#         return d1, d4, d2, d5, d3, d6, d7, d8
+#
+#     for i, perm in zip(range(0x2800, 0x2900), itertools.product([0, 1], repeat=8)):
+#         pixels = get_pixel_ordering(*perm)
+#         print(f'{pixels}: "{chr(i)}",')
