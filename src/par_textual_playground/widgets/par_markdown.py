@@ -95,7 +95,6 @@ class ParMarkdownFence(MarkdownBlock):
         overflow: auto;
         width: 100%;
         height: auto;
-        max-height: 20;
         color: rgb(210,210,210);
         layer: below;
     }
@@ -160,6 +159,9 @@ class ParMarkdown(Markdown):
         background: $surface;
         overflow-y: auto;
         layers: below above;
+        & > * {
+            layer: below;
+        }
 
         &:focus {
             background-tint: $foreground 5%;
