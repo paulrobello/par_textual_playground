@@ -31,7 +31,7 @@ class ParApp(App[None]):
             debug=True,
             suggestion_mode="inline",
         )
-        self.md = ParMarkdown((Path(__file__).parent / "fence.md").read_text(), id="mdv")
+        self.md = ParMarkdown((Path(__file__).parent / "ai_msg.md").read_text(), id="mdv")
         self.tc = TabbedContent("Canvas", "Suggest Float", "Suggest Inline", "Markdown Fence", "Plain MD", id="tc")
         self.logview = RichLog(id="log")
         self.logview.border_title = "Log"

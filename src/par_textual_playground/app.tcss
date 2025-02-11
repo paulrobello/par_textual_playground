@@ -4,6 +4,13 @@ Screen {
         layer: below;
     }
 }
+
+Markdown {
+    height: 1fr;
+    width: 1fr;
+    border: solid $accent;
+}
+
 ParMarkdown {
     height: 1fr;
     width: 1fr;
