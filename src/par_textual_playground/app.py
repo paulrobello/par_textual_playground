@@ -3,7 +3,7 @@ from pathlib import Path
 from rich.console import ConsoleRenderable, RichCast
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Footer, Header, RichLog, TabbedContent, TextArea
+from textual.widgets import Footer, Header, Markdown, RichLog, TabbedContent, TextArea
 
 from par_textual_playground.widgets.canvas.canvs_test import CanvasTest
 from par_textual_playground.widgets.par_markdown import ParMarkdown
@@ -32,7 +32,7 @@ class ParApp(App[None]):
             suggestion_mode="inline",
         )
         self.md = ParMarkdown((Path(__file__).parent / "fence.md").read_text(), id="mdv")
-        self.tc = TabbedContent("Canvas", "Suggest Float", "Suggest Inline", "Markdown Fence", id="tc")
+        self.tc = TabbedContent("Canvas", "Suggest Float", "Suggest Inline", "Markdown Fence", "Plain MD", id="tc")
         self.logview = RichLog(id="log")
         self.logview.border_title = "Log"
         self.info = TextArea(id="info")
@@ -51,6 +51,7 @@ class ParApp(App[None]):
                 yield self.editor_float
                 yield self.editor_inline
                 yield self.md
+                yield Markdown((Path(__file__).parent / "ai_msg.md").read_text(), id="plain_md")
             with Vertical():
                 yield self.info
                 yield self.logview

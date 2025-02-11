@@ -448,9 +448,7 @@ class ParCanvas(Widget):
 
         self.set_hires_pixels(pixels, hires_mode, style)
 
-    def draw_circle(
-        self, cx: int, cy: int, radius: int, style: str = "white"
-    ) -> None:
+    def draw_circle(self, cx: int, cy: int, radius: int, style: str = "white") -> None:
         """
         Draw a circle using Bresenham's algorithm. Compensates for 2:1 aspect ratio.
 
@@ -480,7 +478,6 @@ class ParCanvas(Widget):
             else:
                 x -= 1
                 decision += 2 * (y - x) + 1
-
 
     def draw_circle_highres(
         self, cx: float, cy: float, radius: float, hires_mode: HiResMode = HiResMode.HALFBLOCK, style: str = "white"
